@@ -33,3 +33,50 @@ body {
 .shake {
   animation: shake 0.4s ease-in-out;
 }
+
+.chart-hint {
+  font-size: 11px;
+  color: #555;
+  text-align: center;
+  margin-top: 4px;
+}
+
+.claude-report h2 {
+  color: #e0e0e0;
+  border-bottom: 1px solid #333;
+  padding-bottom: 8px;
+  margin: 24px 0 12px;
+}
+
+.claude-report table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+}
+
+.claude-report td,
+.claude-report th {
+  padding: 8px 12px;
+  border: 1px solid #333;
+  text-align: left;
+}
+
+.claude-report th {
+  background: #242424;
+  color: #888;
+  font-weight: 500;
+}
+
+.claude-report tr:hover td {
+  background: #242424;
+}
+
+.claude-report ul {
+  padding-left: 20px;
+  margin: 8px 0;
+}
+
+.claude-report li {
+  margin: 4px 0;
+  color: #ccc;
+}

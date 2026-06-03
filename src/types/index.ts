@@ -68,6 +68,45 @@ export interface Deal {
   updatedAt: string;
 }
 
+export interface AnalysisMetrics {
+  totalDeals:    number;
+  closedDeals:   number;
+  winRate:       number;
+  winRateChange?: number;
+  bestStrategy:  string;
+  worstStrategy: string;
+  topMistake:    string;
+  winRateByPassRoad: Record<string, { count: number; winRate: number }>;
+  winRateByStrategy: Record<string, { total: number; wins: number; winRate: number }>;
+  winRateByAtrPercent: Record<string, { count: number; winRate: number }>;
+  winRateByDayOfWeek: Record<string, { count: number; winRate: number }>;
+  checklistCorrelation: Array<{
+    key: string; label: string; type: string;
+    count: number; winRate: number;
+  }>;
+  streakAnalysis: {
+    afterLoss2plus: { count: number; winRate: number };
+    afterWin3plus:  { count: number; winRate: number };
+  };
+  ratioAnalysis: { plannedAvg: number; realAvg: number };
+  timeToEntryAnalysis: {
+    fast:   { label: string; count: number; winRate: number };
+    medium: { label: string; count: number; winRate: number };
+    slow:   { label: string; count: number; winRate: number };
+  };
+}
+
+export interface AnalysisReport {
+  id:          number;
+  periodFrom:  string;
+  periodTo:    string;
+  dealsCount:  number;
+  metrics:     AnalysisMetrics;
+  summary:     string;
+  contentHtml: string;
+  createdAt:   string;
+}
+
 export interface DashboardStats {
   totalDeals: number;
   winRate: number;

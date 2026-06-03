@@ -36,6 +36,10 @@ export default function Sidebar({ onClose }: SidebarProps) {
           <span>📋</span>
           <span>Сделки</span>
         </NavLink>
+        <NavLink to="/analysis" className={navClass} onClick={onClose}>
+          <span>📈</span>
+          <span>Анализ</span>
+        </NavLink>
       </nav>
 
       <div className="p-2 border-t border-border">
