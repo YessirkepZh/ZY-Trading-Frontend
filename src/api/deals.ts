@@ -39,3 +39,12 @@ export async function fetchAnalysisReportById(id: number): Promise<AnalysisRepor
   const { data } = await apiClient.get(`/api/analysis/${id}`);
   return data;
 }
+
+export async function fetchLatestAnalysis(): Promise<AnalysisReport | null> {
+  try {
+    const { data } = await apiClient.get('/api/analysis/latest');
+    return data;
+  } catch {
+    return null;
+  }
+}

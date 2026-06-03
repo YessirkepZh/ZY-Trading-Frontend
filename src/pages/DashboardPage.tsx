@@ -1,3 +1,6 @@
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { format } from 'date-fns';
 import { useDashboard } from '../hooks/useDashboard';
 import StatCard from '../components/StatCard';
 import DealCard from '../components/DealCard';
@@ -6,10 +9,16 @@ import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
 import { formatPercent } from '../utils/formatters';
 import { STRATEGY_COLORS } from '../utils/constants';
-import type { Strategy } from '../types';
+import { fetchLatestAnalysis } from '../api/deals';
+import type { Strategy, AnalysisReport } from '../types';
 
 export default function DashboardPage() {
   const { data, loading, error } = useDashboard();
+  const [latestAnalysis, setLatestAnalysis] = useState<AnalysisReport | null>(null);
+
+  useEffect(() => {
+    fetchLatestAnalysis().then(setLatestAnalysis).catch(console.error);
+  }, []);
 
   if (loading) return <Loader />;
 
@@ -112,6 +121,33 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Latest analysis */}
+      {latestAnalysis && (
+        <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-text">🤖 Последний анализ</span>
+            <span className="text-xs text-muted">
+              {format(new Date(latestAnalysis.periodFrom), 'dd.MM')} —{' '}
+              {format(new Date(latestAnalysis.periodTo), 'dd.MM.yyyy')}
+            </span>
+          </div>
+          <p className="text-sm text-muted line-clamp-3">{latestAnalysis.summary}</p>
+          <div className="flex flex-wrap gap-3 text-xs text-muted">
+            <span>
+              Win Rate:{' '}
+              <span style={{ color: latestAnalysis.metrics.winRate >= 50 ? '#4caf50' : '#f44336' }}>
+                {latestAnalysis.metrics.winRate}%
+              </span>
+            </span>
+            <span>Лучшая: <span className="text-text">{latestAnalysis.metrics.bestStrategy}</span></span>
+            <span>Ошибка: <span className="text-orange">{latestAnalysis.metrics.topMistake}</span></span>
+          </div>
+          <Link to="/analysis" className="text-xs text-blue hover:underline">
+            Читать полностью →
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

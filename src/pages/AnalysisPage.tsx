@@ -20,6 +20,12 @@ function getBarColor(winRate: number): string {
   return '#f44336';
 }
 
+function winRateTooltip(value: unknown, _name: unknown, item: unknown): [string, string] {
+  const v = typeof value === 'number' ? value : Number(value ?? 0);
+  const count = (item as { payload?: { count?: number } })?.payload?.count ?? 0;
+  return [`${v}% (${count} сделок)`, 'Win Rate'];
+}
+
 export default function AnalysisPage() {
   const [periodFrom, setPeriodFrom] = useState(
     format(startOfMonth(subMonths(new Date(), 1)), 'yyyy-MM-dd'),
@@ -225,9 +231,7 @@ export default function AnalysisPage() {
                   <XAxis dataKey="name" stroke="#888" tick={{ fontSize: 11 }} />
                   <YAxis stroke="#888" unit="%" />
                   <Tooltip
-                    formatter={(value: number, _: string, props: { payload?: { count?: number } }) =>
-                      [`${value}% (${props.payload?.count ?? 0} сделок)`, 'Win Rate']
-                    }
+                    formatter={winRateTooltip}
                     contentStyle={{ background: '#242424', border: '1px solid #333', fontSize: 12 }}
                   />
                   <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
@@ -248,9 +252,7 @@ export default function AnalysisPage() {
                   <XAxis dataKey="name" stroke="#888" tick={{ fontSize: 11 }} />
                   <YAxis stroke="#888" unit="%" />
                   <Tooltip
-                    formatter={(value: number, _: string, props: { payload?: { count?: number } }) =>
-                      [`${value}% (${props.payload?.count ?? 0} сделок)`, 'Win Rate']
-                    }
+                    formatter={winRateTooltip}
                     contentStyle={{ background: '#242424', border: '1px solid #333', fontSize: 12 }}
                   />
                   <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
@@ -271,9 +273,7 @@ export default function AnalysisPage() {
                   <XAxis dataKey="name" stroke="#888" tick={{ fontSize: 11 }} />
                   <YAxis stroke="#888" unit="%" />
                   <Tooltip
-                    formatter={(value: number, _: string, props: { payload?: { count?: number } }) =>
-                      [`${value}% (${props.payload?.count ?? 0} сделок)`, 'Win Rate']
-                    }
+                    formatter={winRateTooltip}
                     contentStyle={{ background: '#242424', border: '1px solid #333', fontSize: 12 }}
                   />
                   <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
@@ -300,9 +300,7 @@ export default function AnalysisPage() {
                       <XAxis dataKey="name" stroke="#888" tick={{ fontSize: 11 }} />
                       <YAxis stroke="#888" unit="%" />
                       <Tooltip
-                        formatter={(value: number, _: string, props: { payload?: { count?: number } }) =>
-                          [`${value}% (${props.payload?.count ?? 0} сделок)`, 'Win Rate']
-                        }
+                        formatter={winRateTooltip}
                         contentStyle={{ background: '#242424', border: '1px solid #333', fontSize: 12 }}
                       />
                       <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
@@ -331,9 +329,7 @@ export default function AnalysisPage() {
                   <XAxis type="number" stroke="#888" unit="%" tick={{ fontSize: 11 }} />
                   <YAxis type="category" dataKey="name" stroke="#888" tick={{ fontSize: 11 }} width={160} />
                   <Tooltip
-                    formatter={(value: number, _: string, props: { payload?: { count?: number } }) =>
-                      [`${value}% (${props.payload?.count ?? 0} сделок)`, 'Win Rate']
-                    }
+                    formatter={winRateTooltip}
                     contentStyle={{ background: '#242424', border: '1px solid #333', fontSize: 12 }}
                   />
                   <Bar dataKey="winRate" radius={[0, 4, 4, 0]}>
