@@ -107,6 +107,37 @@ export interface AnalysisReport {
   createdAt:   string;
 }
 
+export type ChecklistItemType = 'plus' | 'minus' | 'wait';
+
+export interface ChecklistGroup {
+  id: number;
+  name: string;
+  position: number;
+}
+
+export interface ChecklistItem {
+  id: number;
+  groupId: number;
+  strategy: string;
+  itemType: ChecklistItemType;
+  key: string;
+  label: string;
+  position: number;
+}
+
+export interface ChecklistItemCreate {
+  groupId: number;
+  itemType: ChecklistItemType;
+  key: string;
+  label: string;
+  position?: number;
+}
+
+export interface ChecklistItemUpdate {
+  label?: string;
+  position?: number;
+}
+
 export interface DashboardStats {
   totalDeals: number;
   winRate: number;

@@ -40,6 +40,14 @@ export default function Sidebar({ onClose }: SidebarProps) {
           <span>📈</span>
           <span>Анализ</span>
         </NavLink>
+
+        <div className="mt-2 mb-1 px-3">
+          <span className="text-xs text-muted/50 uppercase tracking-widest">Настройки</span>
+        </div>
+        <NavLink to="/settings/checklists" className={navClass} onClick={onClose}>
+          <span>✅</span>
+          <span>Чеклисты</span>
+        </NavLink>
       </nav>
 
       <div className="p-2 border-t border-border">
