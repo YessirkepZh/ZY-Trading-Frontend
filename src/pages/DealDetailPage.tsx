@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDeal } from '../hooks/useDeal';
 import DealStatusBadge from '../components/DealStatusBadge';
@@ -7,6 +7,7 @@ import ScreenshotModal from '../components/ScreenshotModal';
 import Loader from '../components/Loader';
 import { formatPrice, formatDate } from '../utils/formatters';
 import { RESULT_COLORS, RESULT_LABELS, MARKET_LABELS } from '../utils/constants';
+import { fetchChecklistItems } from '../api/checklist';
 
 interface ScreenshotThumbProps {
   src: string;
@@ -54,6 +55,18 @@ export default function DealDetailPage() {
   const { deal, loading, error } = useDeal(numId);
 
   const [modalSrc, setModalSrc] = useState<{ src: string; label: string } | null>(null);
+  const [checklistLabels, setChecklistLabels] = useState<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    if (!deal?.strategy) return;
+    fetchChecklistItems({ strategy: deal.strategy })
+      .then((items) => {
+        setChecklistLabels(new Map(items.map((i) => [i.key, i.label])));
+      })
+      .catch(() => {});
+  }, [deal?.strategy]);
+
+  const resolveKey = (key: string) => checklistLabels.get(key) ?? key;
 
   if (loading) return <Loader />;
 
@@ -189,12 +202,12 @@ export default function DealDetailPage() {
               {claudeCheckResult.recommendation} ({claudeCheckResult.confidence}%)
             </span>
           </div>
-          <p className="text-sm text-text/80 italic">"{claudeCheckResult.reasoning}"</p>
-          {claudeCheckResult.warnings.length > 0 && (
+          <p className="text-sm text-text/80 italic">"{claudeCheckResult.reasoningRu ?? claudeCheckResult.reasoning}"</p>
+          {(claudeCheckResult.warningsRu ?? claudeCheckResult.warnings).length > 0 && (
             <div className="mt-2">
               <p className="text-xs text-orange font-medium mb-1">⚠️ Предупреждения:</p>
               <ul className="space-y-0.5">
-                {claudeCheckResult.warnings.map((w, i) => (
+                {(claudeCheckResult.warningsRu ?? claudeCheckResult.warnings).map((w, i) => (
                   <li key={i} className="text-xs text-muted">• {w}</li>
                 ))}
               </ul>
@@ -210,19 +223,19 @@ export default function DealDetailPage() {
           {checklistSnapshot.plus.length > 0 && (
             <div>
               <p className="text-xs text-green font-medium mb-1">✅ ПРЕДПОСЫЛКИ:</p>
-              <p className="text-xs text-muted">{checklistSnapshot.plus.join(', ')}</p>
+              <p className="text-xs text-muted">{checklistSnapshot.plus.map(resolveKey).join(', ')}</p>
             </div>
           )}
           {checklistSnapshot.minus.length > 0 && (
             <div>
               <p className="text-xs text-red font-medium mb-1">❌ МИНУСЫ:</p>
-              <p className="text-xs text-muted">{checklistSnapshot.minus.join(', ')}</p>
+              <p className="text-xs text-muted">{checklistSnapshot.minus.map(resolveKey).join(', ')}</p>
             </div>
           )}
           {checklistSnapshot.wait.length > 0 && (
             <div>
               <p className="text-xs text-orange font-medium mb-1">⏳ ОЖИДАЮ:</p>
-              <p className="text-xs text-muted">{checklistSnapshot.wait.join(', ')}</p>
+              <p className="text-xs text-muted">{checklistSnapshot.wait.map(resolveKey).join(', ')}</p>
             </div>
           )}
         </div>
