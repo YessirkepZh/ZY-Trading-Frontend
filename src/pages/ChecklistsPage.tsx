@@ -77,6 +77,7 @@ function Modal({ title, onClose, children }: ModalProps) {
 
 interface ItemFormProps {
   groups: ChecklistGroup[];
+  items: ChecklistItem[];
   initial: FormState;
   submitLabel: string;
   error: string | null;
@@ -86,8 +87,15 @@ interface ItemFormProps {
   lockGroup?: boolean;
 }
 
+function nextPosition(items: ChecklistItem[], groupId: number, itemType: ChecklistItemType): number {
+  const matches = items.filter((i) => i.groupId === groupId && i.itemType === itemType);
+  if (matches.length === 0) return 0;
+  return Math.max(...matches.map((i) => i.position)) + 1;
+}
+
 function ItemForm({
   groups,
+  items,
   initial,
   submitLabel,
   error,
@@ -100,6 +108,13 @@ function ItemForm({
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
     setForm((prev) => ({ ...prev, [k]: v }));
+
+  useEffect(() => {
+    setForm((prev) => ({
+      ...prev,
+      position: String(nextPosition(items, prev.groupId, prev.itemType)),
+    }));
+  }, [form.groupId, form.itemType, items]);
 
   return (
     <form
@@ -495,6 +510,7 @@ export default function ChecklistsPage() {
         <Modal title="Новый пункт чеклиста" onClose={() => setShowCreateModal(false)}>
           <ItemForm
             groups={groups}
+            items={items}
             initial={EMPTY_FORM(activeGroupId ?? groups[0]?.id ?? 1)}
             submitLabel="Создать"
             error={formError}
