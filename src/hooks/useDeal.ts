@@ -1,17 +1,23 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { fetchDealById } from '../api/deals';
-import type { Deal } from '../types';
+import type { Deal, DealComment } from '../types';
 
 interface UseDealResult {
   deal: Deal | null;
+  comments: DealComment[];
   loading: boolean;
   error: string | null;
+  refetch: () => void;
 }
 
 export function useDeal(id: number | null): UseDealResult {
   const [deal, setDeal] = useState<Deal | null>(null);
+  const [comments, setComments] = useState<DealComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
+
+  const refetch = useCallback(() => setVersion((v) => v + 1), []);
 
   useEffect(() => {
     if (id === null) return;
@@ -22,8 +28,11 @@ export function useDeal(id: number | null): UseDealResult {
     setError(null);
 
     fetchDealById(id)
-      .then((res) => {
-        if (!cancelled) setDeal(res);
+      .then(({ deal: fetchedDeal, comments: fetchedComments }) => {
+        if (!cancelled) {
+          setDeal(fetchedDeal);
+          setComments(fetchedComments);
+        }
       })
       .catch(() => {
         if (!cancelled) setError('Не удалось загрузить сделку');
@@ -33,7 +42,7 @@ export function useDeal(id: number | null): UseDealResult {
       });
 
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, version]);
 
-  return { deal, loading, error };
+  return { deal, comments, loading, error, refetch };
 }

@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { Deal, DashboardStats, AnalysisReport } from '../types';
+import type { Deal, DealComment, DashboardStats, AnalysisReport } from '../types';
 
 export async function fetchDashboard(): Promise<DashboardStats> {
   const { data } = await apiClient.get<{ success: boolean; stats: DashboardStats }>('/api/dashboard');
@@ -17,9 +17,19 @@ export async function fetchDeals(params?: {
   return data.deals;
 }
 
-export async function fetchDealById(id: number): Promise<Deal> {
-  const { data } = await apiClient.get<{ success: boolean; deal: Deal }>(`/api/deals/${id}`);
-  return data.deal;
+export async function fetchDealById(id: number): Promise<{ deal: Deal; comments: DealComment[] }> {
+  const { data } = await apiClient.get<{ success: boolean; deal: Deal; comments: DealComment[] }>(
+    `/api/deals/${id}`,
+  );
+  return { deal: data.deal, comments: data.comments ?? [] };
+}
+
+export async function createDealComment(dealId: number, text: string): Promise<DealComment> {
+  const { data } = await apiClient.post<{ success: boolean; comment: DealComment }>(
+    `/api/deals/${dealId}/comments`,
+    { text },
+  );
+  return data.comment;
 }
 
 export async function createAnalysis(params: {

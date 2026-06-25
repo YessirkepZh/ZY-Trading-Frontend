@@ -8,6 +8,7 @@ import Loader from '../components/Loader';
 import { formatPrice, formatDate } from '../utils/formatters';
 import { RESULT_COLORS, RESULT_LABELS, MARKET_LABELS } from '../utils/constants';
 import { fetchChecklistItems } from '../api/checklist';
+import { createDealComment } from '../api/deals';
 
 interface ScreenshotThumbProps {
   src: string;
@@ -52,10 +53,13 @@ export default function DealDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const numId = id ? parseInt(id, 10) : null;
-  const { deal, loading, error } = useDeal(numId);
+  const { deal, comments, loading, error, refetch } = useDeal(numId);
 
   const [modalSrc, setModalSrc] = useState<{ src: string; label: string } | null>(null);
   const [checklistLabels, setChecklistLabels] = useState<Map<string, string>>(new Map());
+  const [commentText, setCommentText] = useState('');
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!deal?.strategy) return;
@@ -67,6 +71,24 @@ export default function DealDetailPage() {
   }, [deal?.strategy]);
 
   const resolveKey = (key: string) => checklistLabels.get(key) ?? key;
+
+  const handleAddComment = async () => {
+    const text = commentText.trim();
+    if (!deal || text.length < 1 || text.length > 2000) return;
+
+    setCommentSubmitting(true);
+    setCommentError(null);
+    try {
+      await createDealComment(deal.id, text);
+      setCommentText('');
+      refetch();
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { error?: string } }; message?: string };
+      setCommentError(e.response?.data?.error ?? e.message ?? 'Не удалось добавить комментарий');
+    } finally {
+      setCommentSubmitting(false);
+    }
+  };
 
   if (loading) return <Loader />;
 
@@ -84,6 +106,9 @@ export default function DealDetailPage() {
   }
 
   const { calcResult, claudeCheckResult, checklistSnapshot, claudeStatsResult } = deal;
+  const statsSummary = claudeStatsResult?.summaryRu ?? claudeStatsResult?.summary;
+  const statsMistakes = claudeStatsResult?.mistakesRu ?? claudeStatsResult?.mistakes ?? [];
+  const statsImprovements = claudeStatsResult?.improvementsRu ?? claudeStatsResult?.improvements ?? [];
   const resultColor = deal.dealResult ? RESULT_COLORS[deal.dealResult] : undefined;
   const resultLabel = deal.dealResult ? RESULT_LABELS[deal.dealResult] : null;
   const directionColor = deal.direction === 'long' ? '#4caf50' : '#f44336';
@@ -259,27 +284,27 @@ export default function DealDetailPage() {
       )}
 
       {/* Claude stats */}
-      {claudeStatsResult && (
+      {claudeStatsResult && statsSummary && (
         <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
           <div>
             <p className="text-sm">📊 Итог:</p>
-            <p className="text-sm text-muted mt-1">{claudeStatsResult.summary}</p>
+            <p className="text-sm text-muted mt-1">{statsSummary}</p>
           </div>
-          {claudeStatsResult.mistakes.length > 0 && (
+          {statsMistakes.length > 0 && (
             <div>
               <p className="text-xs text-red font-medium mb-1">❌ Ошибки:</p>
               <ul className="space-y-0.5">
-                {claudeStatsResult.mistakes.map((m, i) => (
+                {statsMistakes.map((m, i) => (
                   <li key={i} className="text-xs text-muted">• {m}</li>
                 ))}
               </ul>
             </div>
           )}
-          {claudeStatsResult.improvements.length > 0 && (
+          {statsImprovements.length > 0 && (
             <div>
               <p className="text-xs text-blue font-medium mb-1">💡 Улучшения:</p>
               <ul className="space-y-0.5">
-                {claudeStatsResult.improvements.map((imp, i) => (
+                {statsImprovements.map((imp, i) => (
                   <li key={i} className="text-xs text-muted">• {imp}</li>
                 ))}
               </ul>
@@ -287,6 +312,48 @@ export default function DealDetailPage() {
           )}
         </div>
       )}
+
+      {/* Comments */}
+      <div className="bg-surface border border-border rounded-lg p-4 space-y-3">
+        <h3 className="text-sm font-medium text-text">Комментарии</h3>
+
+        {comments.length === 0 ? (
+          <p className="text-xs text-muted">Нет комментариев</p>
+        ) : (
+          <ul className="space-y-2">
+            {comments.map((c) => (
+              <li key={c.id} className="border border-border/50 rounded-lg px-3 py-2">
+                <p className="text-sm text-text whitespace-pre-wrap">{c.text}</p>
+                <p className="text-xs text-muted mt-1">{formatDate(c.createdAt)}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="space-y-2 pt-1 border-t border-border">
+          <textarea
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            placeholder="Добавить комментарий..."
+            maxLength={2000}
+            rows={3}
+            className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm text-text resize-y min-h-[72px]"
+          />
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-muted">{commentText.length}/2000</span>
+            <button
+              onClick={handleAddComment}
+              disabled={commentSubmitting || commentText.trim().length < 1}
+              className="px-3 py-1.5 bg-blue text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-blue/80 transition-colors"
+            >
+              {commentSubmitting ? 'Сохранение...' : 'Добавить'}
+            </button>
+          </div>
+          {commentError && (
+            <p className="text-xs text-red">{commentError}</p>
+          )}
+        </div>
+      </div>
 
       {/* Screenshot modal */}
       {modalSrc && (

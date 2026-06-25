@@ -36,7 +36,24 @@ export interface ClaudeStatsResult {
   summary: string;
   mistakes: string[];
   improvements: string[];
+  summaryRu?: string;
+  mistakesRu?: string[];
+  improvementsRu?: string[];
   analyzedAt: string;
+}
+
+export interface DealComment {
+  id: number;
+  dealId: number;
+  text: string;
+  createdAt: string;
+}
+
+export interface MarketStats {
+  total: number;
+  wins: number;
+  losses: number;
+  winRate: number;
 }
 
 export interface ChecklistSnapshot {
@@ -149,5 +166,6 @@ export interface DashboardStats {
     wins: number;
     winRate: number;
   }>;
+  byMarket?: Record<MarketType, MarketStats>;
   recentDeals: Deal[];
 }
