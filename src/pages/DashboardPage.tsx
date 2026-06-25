@@ -1,18 +1,100 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import {
+  BarChart, Bar, Line, ComposedChart,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
+} from 'recharts';
 import { useDashboard } from '../hooks/useDashboard';
 import StatCard from '../components/StatCard';
 import DealCard from '../components/DealCard';
 import WinRateChart from '../components/WinRateChart';
 import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
-import { formatPercent } from '../utils/formatters';
+import { formatPercent, formatR, formatUsd, formatShortDate } from '../utils/formatters';
 import { STRATEGY_COLORS, MARKET_LABELS } from '../utils/constants';
 import { fetchLatestAnalysis } from '../api/deals';
-import type { Strategy, MarketType, AnalysisReport } from '../types';
+import type { Strategy, MarketType, AnalysisReport, ChecklistTopItem } from '../types';
 
 const MARKET_ORDER: MarketType[] = ['stocks', 'crypto', 'forex'];
+
+const CHECKLIST_TYPE_COLORS: Record<string, string> = {
+  plus: '#4caf50',
+  minus: '#f44336',
+  wait: '#ff9800',
+};
+
+const CHART_TOOLTIP = {
+  contentStyle: { background: '#242424', border: '1px solid #333', fontSize: 12 },
+};
+
+function ChartPlaceholder({ message }: { message: string }) {
+  return (
+    <div className="flex items-center justify-center h-[200px] text-muted text-sm text-center px-4">
+      {message}
+    </div>
+  );
+}
+
+function ChecklistTopTable({
+  title,
+  items,
+  highlightKey,
+}: {
+  title: string;
+  items: ChecklistTopItem[];
+  highlightKey: 'inWins' | 'inLosses';
+}) {
+  return (
+    <div className="bg-surface border border-border rounded-lg overflow-hidden">
+      <h3 className="text-sm font-medium text-text px-4 py-3 border-b border-border">{title}</h3>
+      {items.length === 0 ? (
+        <p className="px-4 py-6 text-xs text-muted">Недостаточно данных</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Пункт</th>
+                <th className="text-left px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Стратегия</th>
+                <th className="text-right px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Win</th>
+                <th className="text-right px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Loss</th>
+                <th className="text-right px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Всего</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={`${item.key}-${item.strategy}`} className="border-b border-border/50 last:border-0">
+                  <td className="px-4 py-2.5">
+                    <span
+                      className="text-xs font-medium px-2 py-0.5 rounded mr-1.5"
+                      style={{
+                        background: `${CHECKLIST_TYPE_COLORS[item.type] ?? '#888'}22`,
+                        color: CHECKLIST_TYPE_COLORS[item.type] ?? '#888',
+                        border: `1px solid ${CHECKLIST_TYPE_COLORS[item.type] ?? '#888'}44`,
+                      }}
+                    >
+                      {item.type}
+                    </span>
+                    <span className="text-text">{item.label}</span>
+                  </td>
+                  <td className="px-4 py-2.5 text-muted text-xs">{item.strategy}</td>
+                  <td className={`px-4 py-2.5 text-right ${highlightKey === 'inWins' ? 'text-green font-semibold' : 'text-green'}`}>
+                    {item.inWins}
+                  </td>
+                  <td className={`px-4 py-2.5 text-right ${highlightKey === 'inLosses' ? 'text-red font-semibold' : 'text-red'}`}>
+                    {item.inLosses}
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-text">{item.total}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { data, loading, error } = useDashboard();
@@ -37,22 +119,45 @@ export default function DashboardPage() {
   const recentDeals = data.recentDeals ?? [];
   const activeDeals = recentDeals.filter((d) => d.status === 'entered').length;
 
+  const weeklyData = (data.weeklyPerformance ?? []).map((w) => ({
+    label: formatShortDate(w.weekStart),
+    winRate: w.winRate ?? undefined,
+    avgR: w.avgR ?? undefined,
+    total: w.total,
+  }));
+
+  const profitData = (data.profitSumDaily ?? []).map((d) => ({
+    label: formatShortDate(d.date),
+    profitR: d.profitR,
+    profitUsd: d.profitUsd,
+  }));
+
+  const drawdownData = (data.dailyDrawdown ?? []).map((d) => ({
+    label: formatShortDate(d.date),
+    drawdownR: d.drawdownR,
+    drawdownUsd: d.drawdownUsd,
+  }));
+
+  const dealsPerDayData = (data.dealsPerDay ?? []).map((d) => ({
+    label: formatShortDate(d.date),
+    count: d.count,
+  }));
+
+  const hasAdvancedMetrics = data.expectancyR !== undefined;
+
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold text-text">Дашборд</h2>
 
-      {/* Stats row */}
+      {/* Primary KPI */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Всего сделок" value={data.totalDeals} />
+        <StatCard label="Закрытых сделок" value={data.totalDeals} />
         <StatCard
           label="Win Rate"
           value={formatPercent(data.winRate)}
           accent={data.winRate >= 50 ? '#4caf50' : '#f44336'}
         />
-        <StatCard
-          label="Средний PassRoad"
-          value={formatPercent(data.avgPassRoad)}
-        />
+        <StatCard label="Средний PassRoad" value={formatPercent(data.avgPassRoad)} />
         <StatCard
           label="Активных"
           value={activeDeals}
@@ -60,7 +165,145 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Chart */}
+      {/* Advanced KPI */}
+      {hasAdvancedMetrics && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <StatCard
+            label="Expectancy"
+            value={formatR(data.expectancyR!)}
+            accent={data.expectancyR! >= 0 ? '#4caf50' : '#f44336'}
+          />
+          <StatCard
+            label="Expectancy $"
+            value={formatUsd(data.expectancyUsd!)}
+            accent={data.expectancyUsd! >= 0 ? '#4caf50' : '#f44336'}
+          />
+          <StatCard
+            label="Max DD"
+            value={formatR(data.maxDrawdownR!)}
+            accent="#f44336"
+          />
+          <StatCard
+            label="Max DD $"
+            value={formatUsd(data.maxDrawdownUsd!)}
+            accent="#f44336"
+          />
+          <StatCard
+            label="Сделок / день"
+            value={data.avgDealsPerDay!.toFixed(1)}
+          />
+        </div>
+      )}
+
+      {/* Weekly performance */}
+      {data.weeklyPerformance && (
+        <div className="bg-surface border border-border rounded-lg p-4">
+          <h3 className="text-sm font-medium text-text mb-4">Win Rate + Avg R по неделям</h3>
+          {weeklyData.length === 0 ? (
+            <ChartPlaceholder message="Нет данных по неделям" />
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <ComposedChart data={weeklyData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                <XAxis dataKey="label" stroke="#888" tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="left" stroke="#888" unit="%" domain={[0, 100]} tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="right" orientation="right" stroke="#888" tick={{ fontSize: 11 }} />
+                <Tooltip
+                  {...CHART_TOOLTIP}
+                  formatter={(value, name, item) => {
+                    const total = (item as { payload?: { total?: number } }).payload?.total ?? 0;
+                    if (name === 'Win Rate') {
+                      return value != null ? [`${value}% (${total} сделок)`, name] : ['—', name];
+                    }
+                    return value != null ? [`${Number(value).toFixed(2)}R`, name] : ['—', name];
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar yAxisId="left" dataKey="winRate" name="Win Rate" fill="#2196f3" radius={[4, 4, 0, 0]} />
+                <Line yAxisId="right" type="monotone" dataKey="avgR" name="Avg R" stroke="#ff9800" strokeWidth={2} dot={{ r: 3 }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      )}
+
+      {/* Daily charts */}
+      {hasAdvancedMetrics && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="bg-surface border border-border rounded-lg p-4">
+            <h3 className="text-sm font-medium text-text mb-3">P&L по дням (R)</h3>
+            {profitData.length === 0 ? (
+              <ChartPlaceholder message="Нет данных" />
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={profitData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="label" stroke="#888" tick={{ fontSize: 10 }} />
+                  <YAxis stroke="#888" tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    {...CHART_TOOLTIP}
+                    formatter={(value, name) => {
+                      if (name === 'profitR') return [`${Number(value).toFixed(2)}R`, 'P&L R'];
+                      return [formatUsd(Number(value)), 'P&L $'];
+                    }}
+                  />
+                  <Bar dataKey="profitR" radius={[3, 3, 0, 0]}>
+                    {profitData.map((entry, i) => (
+                      <Cell key={i} fill={entry.profitR >= 0 ? '#4caf50' : '#f44336'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className="bg-surface border border-border rounded-lg p-4">
+            <h3 className="text-sm font-medium text-text mb-3">Просадка по дням</h3>
+            {drawdownData.length === 0 ? (
+              <ChartPlaceholder message="Нет данных" />
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <ComposedChart data={drawdownData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="label" stroke="#888" tick={{ fontSize: 10 }} />
+                  <YAxis stroke="#888" tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    {...CHART_TOOLTIP}
+                    formatter={(value, name) =>
+                      name === 'drawdownR'
+                        ? [`${Number(value).toFixed(2)}R`, 'DD R']
+                        : [formatUsd(Number(value)), 'DD $']
+                    }
+                  />
+                  <Line type="monotone" dataKey="drawdownR" stroke="#f44336" strokeWidth={2} dot={{ r: 2 }} name="drawdownR" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className="bg-surface border border-border rounded-lg p-4 md:col-span-2 xl:col-span-1">
+            <h3 className="text-sm font-medium text-text mb-3">Сделок в день</h3>
+            {dealsPerDayData.length === 0 ? (
+              <ChartPlaceholder message="Нет данных" />
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={dealsPerDayData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="label" stroke="#888" tick={{ fontSize: 10 }} />
+                  <YAxis stroke="#888" allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    {...CHART_TOOLTIP}
+                    formatter={(value) => [`${value}`, 'Сделок']}
+                  />
+                  <Bar dataKey="count" fill="#2196f3" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Strategy win rate chart */}
       <div className="bg-surface border border-border rounded-lg p-4">
         <h3 className="text-sm font-medium text-text mb-4">Win Rate по стратегиям</h3>
         <WinRateChart data={data.byStrategy} />
@@ -74,17 +317,22 @@ export default function DashboardPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Стратегия</th>
-                  <th className="text-right px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Всего</th>
-                  <th className="text-right px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Win</th>
-                  <th className="text-right px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Win Rate</th>
+                  <th className="text-left px-3 py-2.5 text-muted font-normal text-xs uppercase tracking-wide whitespace-nowrap">Стратегия</th>
+                  <th className="text-right px-3 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Всего</th>
+                  <th className="text-right px-3 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">W</th>
+                  <th className="text-right px-3 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">L</th>
+                  <th className="text-right px-3 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">WR</th>
+                  <th className="text-right px-3 py-2.5 text-muted font-normal text-xs uppercase tracking-wide whitespace-nowrap">Ratio</th>
+                  <th className="text-right px-3 py-2.5 text-muted font-normal text-xs uppercase tracking-wide whitespace-nowrap">Avg R</th>
+                  <th className="text-right px-3 py-2.5 text-muted font-normal text-xs uppercase tracking-wide whitespace-nowrap">Edge plan</th>
+                  <th className="text-right px-3 py-2.5 text-muted font-normal text-xs uppercase tracking-wide whitespace-nowrap">Edge real</th>
                 </tr>
               </thead>
               <tbody>
-                {(Object.entries(data.byStrategy) as [Strategy, { total: number; wins: number; winRate: number }][]).map(
+                {(Object.entries(data.byStrategy) as [Strategy, typeof data.byStrategy[Strategy]][]).map(
                   ([strategy, stats]) => (
                     <tr key={strategy} className="border-b border-border/50 last:border-0">
-                      <td className="px-4 py-2.5">
+                      <td className="px-3 py-2.5 whitespace-nowrap">
                         <span
                           className="text-xs font-medium px-2 py-0.5 rounded"
                           style={{
@@ -96,15 +344,24 @@ export default function DashboardPage() {
                           {strategy}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-right text-text">{stats.total}</td>
-                      <td className="px-4 py-2.5 text-right text-green">{stats.wins}</td>
-                      <td className="px-4 py-2.5 text-right">
+                      <td className="px-3 py-2.5 text-right text-text">{stats.total}</td>
+                      <td className="px-3 py-2.5 text-right text-green">{stats.wins}</td>
+                      <td className="px-3 py-2.5 text-right text-red">{stats.losses}</td>
+                      <td className="px-3 py-2.5 text-right">
                         <span style={{ color: stats.winRate >= 50 ? '#4caf50' : '#f44336' }}>
                           {formatPercent(stats.winRate)}
                         </span>
                       </td>
+                      <td className="px-3 py-2.5 text-right text-text">{stats.avgRatio.toFixed(1)}</td>
+                      <td className="px-3 py-2.5 text-right text-text">{stats.avgR.toFixed(2)}</td>
+                      <td className="px-3 py-2.5 text-right text-text">{stats.edgePlanned.toFixed(2)}</td>
+                      <td className="px-3 py-2.5 text-right">
+                        <span style={{ color: stats.edgeReal >= 0 ? '#4caf50' : '#f44336' }}>
+                          {stats.edgeReal.toFixed(2)}
+                        </span>
+                      </td>
                     </tr>
-                  )
+                  ),
                 )}
               </tbody>
             </table>
@@ -149,6 +406,26 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Checklist tops */}
+      {(data.topChecklistInWins || data.topChecklistInLoss) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {data.topChecklistInWins && (
+            <ChecklistTopTable
+              title="✅ Чек-лист в победах"
+              items={data.topChecklistInWins}
+              highlightKey="inWins"
+            />
+          )}
+          {data.topChecklistInLoss && (
+            <ChecklistTopTable
+              title="❌ Чек-лист в поражениях"
+              items={data.topChecklistInLoss}
+              highlightKey="inLosses"
+            />
+          )}
+        </div>
+      )}
 
       {/* Recent deals */}
       <div>

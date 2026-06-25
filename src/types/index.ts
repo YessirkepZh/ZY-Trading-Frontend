@@ -56,6 +56,54 @@ export interface MarketStats {
   winRate: number;
 }
 
+export interface StrategyStats {
+  total: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  avgRatio: number;
+  avgR: number;
+  edgePlanned: number;
+  edgeReal: number;
+}
+
+export interface WeeklyPerformance {
+  period: string;
+  weekStart: string;
+  total: number;
+  wins: number;
+  losses: number;
+  winRate: number | null;
+  avgR: number | null;
+}
+
+export interface DailyCount {
+  date: string;
+  count: number;
+}
+
+export interface DailyProfit {
+  date: string;
+  profitR: number;
+  profitUsd: number;
+}
+
+export interface DailyDrawdown {
+  date: string;
+  drawdownR: number;
+  drawdownUsd: number;
+}
+
+export interface ChecklistTopItem {
+  key: string;
+  label: string;
+  type: ChecklistItemType;
+  strategy: string;
+  inWins: number;
+  inLosses: number;
+  total: number;
+}
+
 export interface ChecklistSnapshot {
   plus: string[];
   minus: string[];
@@ -161,11 +209,18 @@ export interface DashboardStats {
   totalDeals: number;
   winRate: number;
   avgPassRoad: number;
-  byStrategy: Record<Strategy, {
-    total: number;
-    wins: number;
-    winRate: number;
-  }>;
+  expectancyR?: number;
+  expectancyUsd?: number;
+  maxDrawdownR?: number;
+  maxDrawdownUsd?: number;
+  avgDealsPerDay?: number;
+  byStrategy: Record<Strategy, StrategyStats>;
   byMarket?: Record<MarketType, MarketStats>;
+  weeklyPerformance?: WeeklyPerformance[];
+  dealsPerDay?: DailyCount[];
+  profitSumDaily?: DailyProfit[];
+  dailyDrawdown?: DailyDrawdown[];
+  topChecklistInWins?: ChecklistTopItem[];
+  topChecklistInLoss?: ChecklistTopItem[];
   recentDeals: Deal[];
 }

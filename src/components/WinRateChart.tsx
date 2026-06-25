@@ -8,11 +8,11 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import type { Strategy } from '../types';
+import type { Strategy, StrategyStats } from '../types';
 import { STRATEGY_COLORS } from '../utils/constants';
 
 interface WinRateChartProps {
-  data: Record<Strategy, { total: number; wins: number; winRate: number }>;
+  data: Record<Strategy, Pick<StrategyStats, 'winRate'>>;
 }
 
 export default function WinRateChart({ data }: WinRateChartProps) {
