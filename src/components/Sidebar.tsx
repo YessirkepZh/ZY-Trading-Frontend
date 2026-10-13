@@ -1,17 +1,12 @@
-import { NavLink, useNavigate } from 'react-router-dom';
-import { API_KEY_STORAGE_KEY } from '../api/client';
+import { NavLink } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 interface SidebarProps {
   onClose?: () => void;
 }
 
 export default function Sidebar({ onClose }: SidebarProps) {
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    localStorage.removeItem(API_KEY_STORAGE_KEY);
-    navigate(0);
-  };
+  const { user, logout } = useAuth();
 
   const navClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
@@ -47,11 +42,16 @@ export default function Sidebar({ onClose }: SidebarProps) {
           <span>✅</span>
           <span>Чеклисты</span>
         </NavLink>
+        <NavLink to="/settings/access" className={navClass} onClick={onClose}>
+          <span>🔑</span>
+          <span>Доступ</span>
+        </NavLink>
       </nav>
 
       <div className="p-2 border-t border-border">
+        <p className="px-3 pt-1 pb-2 text-xs text-muted truncate" title={user.email}>{user.email}</p>
         <button
-          onClick={handleLogout}
+          onClick={logout}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-muted hover:text-red hover:bg-red/10 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

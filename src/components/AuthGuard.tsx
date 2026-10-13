@@ -1,23 +1,72 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import LoginPage from './LoginPage';
-import { API_KEY_STORAGE_KEY, checkApiKey } from '../api/client';
+import Loader from './Loader';
+import { fetchMe, login, logout } from '../api/auth';
+import { getApiErrorMessage, refreshSession, setSessionExpiredHandler } from '../api/client';
+import { AuthContext } from '../hooks/useAuth';
+import type { AuthUser } from '../types';
+
+type AuthState =
+  | { status: 'checking' }
+  | { status: 'anonymous' }
+  | { status: 'authenticated'; user: AuthUser };
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
-  const [isAuth, setIsAuth] = useState(() => Boolean(localStorage.getItem(API_KEY_STORAGE_KEY)));
+  const [state, setState] = useState<AuthState>({ status: 'checking' });
 
-  const handleLogin = async (password: string): Promise<string | null> => {
-    const result = await checkApiKey(password);
-    if (result === 'ok') {
-      localStorage.setItem(API_KEY_STORAGE_KEY, password);
-      setIsAuth(true);
+  useEffect(() => {
+    let cancelled = false;
+
+    setSessionExpiredHandler(() => setState({ status: 'anonymous' }));
+
+    refreshSession()
+      .then((ok) => (ok ? fetchMe() : null))
+      .then((user) => {
+        if (!cancelled) setState(user ? { status: 'authenticated', user } : { status: 'anonymous' });
+      })
+      .catch(() => {
+        if (!cancelled) setState({ status: 'anonymous' });
+      });
+
+    return () => {
+      cancelled = true;
+      setSessionExpiredHandler(null);
+    };
+  }, []);
+
+  const handleLogin = async (email: string, password: string): Promise<string | null> => {
+    try {
+      const user = await login(email, password);
+      setState({ status: 'authenticated', user });
       return null;
+    } catch (err) {
+      return getApiErrorMessage(err, 'Не удалось войти');
     }
-    return result === 'invalid' ? 'Неверный пароль' : 'Сервер недоступен, попробуйте позже';
   };
 
-  if (!isAuth) {
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } finally {
+      setState({ status: 'anonymous' });
+    }
+  };
+
+  if (state.status === 'checking') {
+    return (
+      <div className="min-h-screen bg-bg flex items-center justify-center">
+        <Loader />
+      </div>
+    );
+  }
+
+  if (state.status === 'anonymous') {
     return <LoginPage onLogin={handleLogin} />;
   }
 
-  return <>{children}</>;
+  return (
+    <AuthContext.Provider value={{ user: state.user, logout: handleLogout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }

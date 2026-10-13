@@ -224,3 +224,29 @@ export interface DashboardStats {
   topChecklistInLoss?: ChecklistTopItem[];
   recentDeals: Deal[];
 }
+
+export type UserRole = 'admin' | 'user';
+
+export interface AuthUser {
+  id: number;
+  email: string;
+  role: UserRole;
+  telegramId: number | null;
+}
+
+export interface ApiToken {
+  id: number;
+  name: string;
+  tokenPrefix: string;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+export interface Invite {
+  id: number;
+  email: string | null;
+  role: UserRole;
+  expiresAt: string;
+  usedAt: string | null;
+  createdAt: string;
+}
