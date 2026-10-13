@@ -53,7 +53,7 @@ function SecretBox({ label, value, onDismiss }: { label: string; value: string; 
   );
 }
 
-function ApiTokensSection() {
+function ApiTokensSection({ singleDevice }: { singleDevice: boolean }) {
   const [tokens, setTokens] = useState<ApiToken[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,11 +72,18 @@ function ApiTokensSection() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (
+      singleDevice &&
+      tokens.length > 0 &&
+      !window.confirm('Новый токен отключит текущий: расширение на старом устройстве перестанет работать. Продолжить?')
+    ) {
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
       const { token, apiToken } = await createApiToken(name.trim());
-      setTokens((prev) => [apiToken, ...prev]);
+      setTokens((prev) => (singleDevice ? [apiToken] : [apiToken, ...prev]));
       setNewToken(token);
       setName('');
     } catch (err) {
@@ -104,6 +111,12 @@ function ApiTokensSection() {
         <p className="text-xs text-muted mt-1">
           Вставьте токен в поле «Ключ доступа» в Chrome-расширении. Токен показывается один раз.
         </p>
+        {singleDevice && (
+          <p className="text-xs text-muted mt-1">
+            Токен работает только на одном устройстве — том, где его используют первым. Новый токен отключает
+            предыдущий.
+          </p>
+        )}
       </div>
 
       <form onSubmit={handleCreate} className="flex flex-col sm:flex-row gap-2">
@@ -149,6 +162,7 @@ function ApiTokensSection() {
                   <code>{t.tokenPrefix}…</code>
                   {' · '}
                   {t.lastUsedAt ? `использован ${formatDate(t.lastUsedAt)}` : 'не использовался'}
+                  {singleDevice && (t.deviceBound ? ' · привязан к устройству' : ' · ещё не привязан')}
                 </p>
               </div>
               <button
@@ -287,7 +301,7 @@ export default function AccessPage() {
         <h2 className="text-lg font-semibold text-text">Доступ</h2>
         <p className="text-xs text-muted mt-1">Вы вошли как {user.email}</p>
       </div>
-      <ApiTokensSection />
+      <ApiTokensSection singleDevice={user.role !== 'admin'} />
       {user.role === 'admin' && <InvitesSection />}
     </div>
   );

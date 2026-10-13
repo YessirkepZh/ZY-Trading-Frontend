@@ -240,6 +240,7 @@ export interface ApiToken {
   tokenPrefix: string;
   lastUsedAt: string | null;
   createdAt: string;
+  deviceBound: boolean;
 }
 
 export interface Invite {
