@@ -8,6 +8,7 @@ import {
   createAnalysis, fetchAnalysisReports, fetchAnalysisReportById,
 } from '../api/deals';
 import type { AnalysisReport } from '../types';
+import { sanitizeHtml } from '../utils/sanitizeHtml';
 
 const DAY_LABELS: Record<string, string> = {
   monday: 'Пн', tuesday: 'Вт', wednesday: 'Ср',
@@ -346,7 +347,7 @@ export default function AnalysisPage() {
           {currentReport.contentHtml && (
             <div
               className="claude-report bg-surface border border-border rounded-lg p-4"
-              dangerouslySetInnerHTML={{ __html: currentReport.contentHtml }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(currentReport.contentHtml) }}
             />
           )}
         </>

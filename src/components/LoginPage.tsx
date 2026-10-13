@@ -1,20 +1,23 @@
 import { useState, useRef } from 'react';
 
 interface LoginPageProps {
-  onLogin: (password: string) => boolean;
+  onLogin: (password: string) => Promise<string | null>;
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [shaking, setShaking] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const ok = onLogin(password);
-    if (!ok) {
-      setError(true);
+    setSubmitting(true);
+    const loginError = await onLogin(password);
+    setSubmitting(false);
+    if (loginError) {
+      setError(loginError);
       setShaking(true);
       setPassword('');
       setTimeout(() => setShaking(false), 400);
@@ -35,26 +38,30 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           className={`bg-surface border border-border rounded-xl p-6 ${shaking ? 'shake' : ''}`}
         >
           <div className="mb-4">
-            <label className="block text-xs text-muted mb-2 uppercase tracking-wide">Пароль</label>
+            <label htmlFor="login-password" className="block text-xs text-muted mb-2 uppercase tracking-wide">Пароль</label>
             <input
+              id="login-password"
               ref={inputRef}
               type="password"
               value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(false); }}
+              onChange={(e) => { setPassword(e.target.value); setError(null); }}
               className="w-full bg-bg border border-border rounded-lg px-3 py-2.5 text-text text-sm outline-none focus:border-blue transition-colors"
               autoFocus
               autoComplete="current-password"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? 'login-error' : undefined}
             />
             {error && (
-              <p className="text-red text-xs mt-2">Неверный пароль</p>
+              <p id="login-error" className="text-red text-xs mt-2">{error}</p>
             )}
           </div>
 
           <button
             type="submit"
-            className="w-full bg-blue hover:bg-blue/80 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
+            disabled={submitting || !password}
+            className="w-full bg-blue hover:bg-blue/80 disabled:opacity-60 text-white font-medium py-2.5 rounded-lg text-sm transition-colors"
           >
-            Войти
+            {submitting ? 'Проверка...' : 'Войти'}
           </button>
         </form>
       </div>

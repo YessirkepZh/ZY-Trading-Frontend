@@ -1,6 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-
-const PASSWORD_KEY = 'zy_auth';
+import { API_KEY_STORAGE_KEY } from '../api/client';
 
 interface SidebarProps {
   onClose?: () => void;
@@ -10,7 +9,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem(PASSWORD_KEY);
+    localStorage.removeItem(API_KEY_STORAGE_KEY);
     navigate(0);
   };
 
