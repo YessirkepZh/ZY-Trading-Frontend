@@ -114,11 +114,20 @@ export default function DealDetailPage() {
   const directionColor = deal.direction === 'long' ? '#4caf50' : '#f44336';
 
   const hasCustomStop = !!calcResult.entryPriceByStop;
+  // New deals: one full-layout photo per stage. screenshotFocus is only on older deals.
   const screenshots = [
     deal.screenshotSetup && { src: deal.screenshotSetup, label: 'Setup' },
     deal.screenshotEntry && { src: deal.screenshotEntry, label: 'Entry' },
     deal.screenshotClose && { src: deal.screenshotClose, label: 'Close' },
+    deal.screenshotFocus && { src: deal.screenshotFocus, label: 'ТФ входа (старый)' },
   ].filter(Boolean) as Array<{ src: string; label: string }>;
+  const slippage = deal.slippagePercent;
+  const slippageText = slippage !== undefined
+    ? `${slippage > 0 ? '+' : ''}${slippage.toFixed(2)}%`
+    : null;
+  const slippageColor = slippage !== undefined
+    ? slippage > 0 ? '#f44336' : slippage < 0 ? '#4caf50' : undefined
+    : undefined;
 
   const recommendationColors: Record<string, string> = {
     take: '#4caf50',
@@ -162,6 +171,7 @@ export default function DealDetailPage() {
 
       <div className="text-xs text-muted">
         Создана: {formatDate(deal.createdAt)}
+        {deal.enteredAt && <> • Вход: {formatDate(deal.enteredAt)}</>}
         {deal.closedAt && <> • Закрыта: {formatDate(deal.closedAt)}</>}
       </div>
 
@@ -175,8 +185,25 @@ export default function DealDetailPage() {
               <TableRow label="PassRoad" value={`${calcResult.passRoad}%`} />
             )}
             <TableRow label="Entry" value={formatPrice(calcResult.entryPrice)} />
+            {deal.actualEntryPrice !== undefined && (
+              <TableRow label="Фактический вход" value={formatPrice(deal.actualEntryPrice)} />
+            )}
+            {slippageText && (
+              <TableRow
+                label="Проскальзывание"
+                value={
+                  <span style={slippageColor ? { color: slippageColor } : undefined}>
+                    {slippageText}
+                    <span className="text-muted"> (плюс = хуже)</span>
+                  </span>
+                }
+              />
+            )}
             <TableRow label="SL" value={<span className="text-red">{formatPrice(calcResult.stopLossDefault)}</span>} />
             <TableRow label="TP" value={<span className="text-green">{formatPrice(calcResult.takeProfitDefault)}</span>} />
+            {deal.closePrice !== undefined && (
+              <TableRow label="Цена закрытия" value={formatPrice(deal.closePrice)} />
+            )}
             <TableRow label="Количество" value={calcResult.quantity} />
             <TableRow label="Сумма" value={`$${calcResult.sum.toLocaleString('ru-RU')}`} />
           </tbody>
@@ -270,7 +297,7 @@ export default function DealDetailPage() {
       {screenshots.length > 0 && (
         <div>
           <h3 className="text-sm font-medium text-text mb-3">Скриншоты</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {screenshots.map((ss) => (
               <ScreenshotThumb
                 key={ss.label}

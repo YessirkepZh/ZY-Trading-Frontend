@@ -124,11 +124,18 @@ export interface Deal {
   hasDeal: boolean;
   dealResult?: DealResult;
   closePrice?: number;
+  /** Real fill; absent = filled at the planned entry */
+  actualEntryPrice?: number;
+  /** Signed % vs planned entry, positive = worse for the trader */
+  slippagePercent?: number;
   closedAt?: string;
+  enteredAt?: string;
   claudeStatsResult?: ClaudeStatsResult;
   screenshotSetup?: string;
   screenshotEntry?: string;
   screenshotClose?: string;
+  /** Close-up of the entry timeframe pane */
+  screenshotFocus?: string;
   passRoad?: number;
   atr?: number;
   createdAt: string;
