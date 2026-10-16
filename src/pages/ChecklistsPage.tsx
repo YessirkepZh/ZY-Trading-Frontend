@@ -30,6 +30,7 @@ interface FormState {
   itemType: ChecklistItemType;
   key: string;
   label: string;
+  description: string;
   position: string;
 }
 
@@ -38,6 +39,7 @@ const EMPTY_FORM = (groupId: number): FormState => ({
   itemType: 'plus',
   key: '',
   label: '',
+  description: '',
   position: '0',
 });
 
@@ -178,6 +180,21 @@ function ItemForm({
       </div>
 
       <div>
+        <label className="block text-xs text-muted mb-1">
+          Описание для Claude
+          <span className="text-muted/50 font-normal"> (необязательно)</span>
+        </label>
+        <textarea
+          value={form.description}
+          onChange={(e) => set('description', e.target.value)}
+          placeholder="Что именно означает этот пункт — контекст для анализа сделки"
+          maxLength={500}
+          rows={3}
+          className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-text text-sm outline-none focus:border-blue transition-colors placeholder:text-muted/50 resize-y"
+        />
+      </div>
+
+      <div>
         <label className="block text-xs text-muted mb-1">Позиция</label>
         <input
           type="number"
@@ -218,19 +235,20 @@ interface EditFormProps {
   item: ChecklistItem;
   error: string | null;
   loading: boolean;
-  onSubmit: (label: string, position: number) => void;
+  onSubmit: (label: string, description: string, position: number) => void;
   onCancel: () => void;
 }
 
 function EditForm({ item, error, loading, onSubmit, onCancel }: EditFormProps) {
   const [label, setLabel] = useState(item.label);
+  const [description, setDescription] = useState(item.description ?? '');
   const [position, setPosition] = useState(String(item.position));
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        onSubmit(label, Number(position));
+        onSubmit(label, description, Number(position));
       }}
       className="space-y-3"
     >
@@ -242,6 +260,21 @@ function EditForm({ item, error, loading, onSubmit, onCancel }: EditFormProps) {
           onChange={(e) => setLabel(e.target.value)}
           required
           className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-text text-sm outline-none focus:border-blue transition-colors"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs text-muted mb-1">
+          Описание для Claude
+          <span className="text-muted/50 font-normal"> (необязательно)</span>
+        </label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Что именно означает этот пункт — контекст для анализа сделки"
+          maxLength={500}
+          rows={3}
+          className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-text text-sm outline-none focus:border-blue transition-colors placeholder:text-muted/50 resize-y"
         />
       </div>
 
@@ -339,11 +372,13 @@ export default function ChecklistsPage() {
     setFormLoading(true);
     setFormError(null);
     try {
+      const desc = form.description.trim();
       const created = await createChecklistItem({
         groupId: form.groupId,
         itemType: form.itemType,
         key: form.key,
         label: form.label,
+        ...(desc ? { description: desc } : {}),
         position: Number(form.position),
       });
       setItems((prev) => [...prev, created]);
@@ -358,12 +393,18 @@ export default function ChecklistsPage() {
     }
   };
 
-  const handleEdit = async (label: string, position: number) => {
+  const handleEdit = async (label: string, description: string, position: number) => {
     if (!editItem) return;
     setFormLoading(true);
     setFormError(null);
     try {
-      const updated = await updateChecklistItem(editItem.id, { label, position });
+      const trimmed = description.trim();
+      const updated = await updateChecklistItem(editItem.id, {
+        label,
+        // Always send description so clearing the textarea removes it in DB
+        description: trimmed || null,
+        position,
+      });
       setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
       setEditItem(null);
     } catch {
@@ -463,6 +504,9 @@ export default function ChecklistsPage() {
                         <span className="text-xs text-muted w-5 text-right shrink-0">{item.position}</span>
                         <div className="min-w-0">
                           <p className="text-sm text-text truncate">{item.label}</p>
+                          {item.description && (
+                            <p className="text-xs text-muted mt-0.5 line-clamp-2">{item.description}</p>
+                          )}
                           <p className="text-xs text-muted/60 font-mono">{item.key}</p>
                         </div>
                       </div>

@@ -196,6 +196,8 @@ export interface ChecklistItem {
   itemType: ChecklistItemType;
   key: string;
   label: string;
+  /** Longer explanation for Claude; omitted when empty */
+  description?: string;
   position: number;
 }
 
@@ -204,12 +206,43 @@ export interface ChecklistItemCreate {
   itemType: ChecklistItemType;
   key: string;
   label: string;
+  description?: string;
   position?: number;
 }
 
 export interface ChecklistItemUpdate {
   label?: string;
+  /** null or "" clears a previously saved description */
+  description?: string | null;
   position?: number;
+}
+
+export type ClaudeRecommendation = 'take' | 'skip' | 'wait';
+
+export interface ClaudeEvalByRec {
+  recommendation: ClaudeRecommendation;
+  count: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  avgConfidence: number;
+}
+
+export interface ClaudeConfidenceBucket {
+  label: string;
+  min: number;
+  max: number;
+  count: number;
+  wins: number;
+  winRate: number;
+  avgConfidence: number;
+}
+
+export interface ClaudeEvaluation {
+  evaluatedDeals: number;
+  accuracyPercent: number | null;
+  byRecommendation: ClaudeEvalByRec[];
+  confidenceBuckets: ClaudeConfidenceBucket[];
 }
 
 export interface DashboardStats {
@@ -229,6 +262,7 @@ export interface DashboardStats {
   dailyDrawdown?: DailyDrawdown[];
   topChecklistInWins?: ChecklistTopItem[];
   topChecklistInLoss?: ChecklistTopItem[];
+  claudeEvaluation?: ClaudeEvaluation | null;
   recentDeals: Deal[];
 }
 
