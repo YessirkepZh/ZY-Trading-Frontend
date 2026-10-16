@@ -14,13 +14,32 @@ import EmptyState from '../components/EmptyState';
 import { formatPercent, formatR, formatUsd, formatShortDate } from '../utils/formatters';
 import { STRATEGY_COLORS, MARKET_LABELS } from '../utils/constants';
 import { fetchLatestAnalysis } from '../api/deals';
-import type { Strategy, MarketType, AnalysisReport, ChecklistTopItem } from '../types';
+import type {
+  Strategy,
+  MarketType,
+  AnalysisReport,
+  ChecklistTopItem,
+  ClaudeEvaluation,
+  ClaudeRecommendation,
+} from '../types';
 
 const MARKET_ORDER: MarketType[] = ['stocks', 'crypto', 'forex'];
 
 const CHECKLIST_TYPE_COLORS: Record<string, string> = {
   plus: '#4caf50',
   minus: '#f44336',
+  wait: '#ff9800',
+};
+
+const REC_LABELS: Record<ClaudeRecommendation, string> = {
+  take: 'Take',
+  skip: 'Skip',
+  wait: 'Wait',
+};
+
+const REC_COLORS: Record<ClaudeRecommendation, string> = {
+  take: '#4caf50',
+  skip: '#f44336',
   wait: '#ff9800',
 };
 
@@ -32,6 +51,120 @@ function ChartPlaceholder({ message }: { message: string }) {
   return (
     <div className="flex items-center justify-center h-[200px] text-muted text-sm text-center px-4">
       {message}
+    </div>
+  );
+}
+
+function ClaudeEvaluationBlock({ evaluation }: { evaluation: ClaudeEvaluation }) {
+  const accuracy = evaluation.accuracyPercent;
+  return (
+    <div className="bg-surface border border-border rounded-lg overflow-hidden">
+      <div className="px-4 py-3 border-b border-border flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-medium text-text">Оценка Claude</h3>
+          <p className="text-xs text-muted mt-0.5">
+            Закрытые win/loss с проверкой сетапа · {evaluation.evaluatedDeals} сделок
+          </p>
+        </div>
+        {accuracy !== null && (
+          <div className="text-right">
+            <p className="text-xs text-muted uppercase tracking-wide">Точность take/skip</p>
+            <p
+              className="text-xl font-semibold"
+              style={{ color: accuracy >= 50 ? '#4caf50' : '#f44336' }}
+            >
+              {accuracy}%
+            </p>
+            <p className="text-[11px] text-muted/70">take→win, skip→loss</p>
+          </div>
+        )}
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-0 md:divide-x divide-border">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Рек.</th>
+                <th className="text-right px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">N</th>
+                <th className="text-right px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Win%</th>
+                <th className="text-right px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Conf</th>
+              </tr>
+            </thead>
+            <tbody>
+              {evaluation.byRecommendation.map((row) => (
+                <tr key={row.recommendation} className="border-b border-border/50 last:border-0">
+                  <td className="px-4 py-2.5">
+                    <span
+                      className="text-xs font-medium px-2 py-0.5 rounded"
+                      style={{
+                        background: `${REC_COLORS[row.recommendation]}22`,
+                        color: REC_COLORS[row.recommendation],
+                        border: `1px solid ${REC_COLORS[row.recommendation]}44`,
+                      }}
+                    >
+                      {REC_LABELS[row.recommendation]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-text">{row.count}</td>
+                  <td
+                    className="px-4 py-2.5 text-right font-medium"
+                    style={{
+                      color: row.recommendation === 'skip'
+                        ? (row.winRate <= 40 ? '#4caf50' : '#f44336')
+                        : (row.winRate >= 50 ? '#4caf50' : '#f44336'),
+                    }}
+                  >
+                    {row.winRate}%
+                    <span className="text-muted font-normal text-xs ml-1">
+                      ({row.wins}W/{row.losses}L)
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-muted">{row.avgConfidence}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="overflow-x-auto border-t md:border-t-0 border-border">
+          <div className="px-4 pt-3 pb-1">
+            <p className="text-xs text-muted">Калибровка уверенности (только take)</p>
+          </div>
+          {evaluation.confidenceBuckets.length === 0 ? (
+            <p className="px-4 py-6 text-xs text-muted">Нет take-рекомендаций</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="text-left px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Conf</th>
+                  <th className="text-right px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">N</th>
+                  <th className="text-right px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Fact win%</th>
+                  <th className="text-right px-4 py-2.5 text-muted font-normal text-xs uppercase tracking-wide">Δ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {evaluation.confidenceBuckets.map((b) => {
+                  const delta = b.winRate - Math.round(b.avgConfidence);
+                  return (
+                    <tr key={b.label} className="border-b border-border/50 last:border-0">
+                      <td className="px-4 py-2.5 text-text">{b.label}%</td>
+                      <td className="px-4 py-2.5 text-right text-text">{b.count}</td>
+                      <td className="px-4 py-2.5 text-right text-text">{b.winRate}%</td>
+                      <td
+                        className="px-4 py-2.5 text-right font-medium"
+                        style={{ color: delta >= 0 ? '#4caf50' : '#f44336' }}
+                      >
+                        {delta > 0 ? '+' : ''}{delta}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -193,6 +326,10 @@ export default function DashboardPage() {
             value={data.avgDealsPerDay!.toFixed(1)}
           />
         </div>
+      )}
+
+      {data.claudeEvaluation && (
+        <ClaudeEvaluationBlock evaluation={data.claudeEvaluation} />
       )}
 
       {/* Weekly performance */}
