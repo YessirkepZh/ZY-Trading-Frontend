@@ -52,8 +52,18 @@ export default function AnalysisPage() {
       const to   = allPeriod ? format(new Date(), 'yyyy-MM-dd') : periodTo;
 
       const result = await createAnalysis({ periodFrom: from, periodTo: to });
-      const full = await fetchAnalysisReportById(result.id);
+      // Report is created as a stub; Claude fills it in the background
+      let full = await fetchAnalysisReportById(result.id);
       setCurrentReport(full);
+
+      for (let i = 0; i < 90 && full.summary === 'Генерируется…'; i++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        full = await fetchAnalysisReportById(result.id);
+        setCurrentReport(full);
+      }
+      if (full.summary === 'Генерируется…') {
+        setError('Отчёт ещё генерируется — открой его из списка через минуту');
+      }
 
       const updated = await fetchAnalysisReports();
       setReports(updated);
