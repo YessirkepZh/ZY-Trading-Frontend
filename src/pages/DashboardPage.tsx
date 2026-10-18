@@ -13,7 +13,7 @@ import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
 import { formatPercent, formatR, formatUsd, formatShortDate } from '../utils/formatters';
 import { STRATEGY_COLORS, MARKET_LABELS } from '../utils/constants';
-import { fetchLatestAnalysis } from '../api/deals';
+import { fetchAiUsage, fetchLatestAnalysis } from '../api/deals';
 import type {
   Strategy,
   MarketType,
@@ -21,6 +21,7 @@ import type {
   ChecklistTopItem,
   ClaudeEvaluation,
   ClaudeRecommendation,
+  AiUsageSummary,
 } from '../types';
 
 const MARKET_ORDER: MarketType[] = ['stocks', 'crypto', 'forex'];
@@ -51,6 +52,63 @@ function ChartPlaceholder({ message }: { message: string }) {
   return (
     <div className="flex items-center justify-center h-[200px] text-muted text-sm text-center px-4">
       {message}
+    </div>
+  );
+}
+
+const PURPOSE_LABELS: Record<string, string> = {
+  check_setup: 'Проверка сетапа',
+  analyze_closed: 'Разбор сделки',
+  analysis_report: 'Отчёт за период',
+  other: 'Прочее',
+};
+
+function AiUsageBlock({ usage }: { usage: AiUsageSummary }) {
+  return (
+    <div className="bg-surface border border-border rounded-lg overflow-hidden">
+      <div className="px-4 py-3 border-b border-border flex flex-wrap items-baseline justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-medium text-text">Расход Claude</h3>
+          <p className="text-xs text-muted mt-0.5">
+            Оценка за {usage.days} дн. · ваши вызовы · не биллинг Anthropic
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-muted uppercase tracking-wide">~ USD</p>
+          <p className="text-xl font-semibold text-text">
+            ${usage.estimatedCostUsd.toFixed(3)}
+          </p>
+          <p className="text-[11px] text-muted/70">{usage.calls} вызовов</p>
+        </div>
+      </div>
+      <div className="px-4 py-3 grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+        <div>
+          <p className="text-xs text-muted">Input tokens</p>
+          <p className="text-text font-medium">{usage.inputTokens.toLocaleString()}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted">Output tokens</p>
+          <p className="text-text font-medium">{usage.outputTokens.toLocaleString()}</p>
+        </div>
+        <div>
+          <p className="text-xs text-muted">Cache read</p>
+          <p className="text-text font-medium">{usage.cacheReadTokens.toLocaleString()}</p>
+        </div>
+      </div>
+      {usage.byPurpose.length > 0 && (
+        <div className="px-4 pb-3">
+          <ul className="text-xs text-muted space-y-1">
+            {usage.byPurpose.map((p) => (
+              <li key={p.purpose} className="flex justify-between gap-2">
+                <span>{PURPOSE_LABELS[p.purpose] ?? p.purpose}</span>
+                <span className="text-text">
+                  {p.calls} · ${p.estimatedCostUsd.toFixed(3)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -232,9 +290,11 @@ function ChecklistTopTable({
 export default function DashboardPage() {
   const { data, loading, error } = useDashboard();
   const [latestAnalysis, setLatestAnalysis] = useState<AnalysisReport | null>(null);
+  const [aiUsage, setAiUsage] = useState<AiUsageSummary | null>(null);
 
   useEffect(() => {
     fetchLatestAnalysis().then(setLatestAnalysis).catch(console.error);
+    fetchAiUsage(30).then(setAiUsage).catch(console.error);
   }, []);
 
   if (loading) return <Loader />;
@@ -330,6 +390,10 @@ export default function DashboardPage() {
 
       {data.claudeEvaluation && (
         <ClaudeEvaluationBlock evaluation={data.claudeEvaluation} />
+      )}
+
+      {aiUsage && aiUsage.calls > 0 && (
+        <AiUsageBlock usage={aiUsage} />
       )}
 
       {/* Weekly performance */}

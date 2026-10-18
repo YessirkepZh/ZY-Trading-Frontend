@@ -1,9 +1,16 @@
 import { apiClient } from './client';
-import type { Deal, DealComment, DashboardStats, AnalysisReport } from '../types';
+import type { Deal, DealComment, DashboardStats, AnalysisReport, AiUsageSummary } from '../types';
 
 export async function fetchDashboard(): Promise<DashboardStats> {
   const { data } = await apiClient.get<{ success: boolean; stats: DashboardStats }>('/api/dashboard');
   return data.stats;
+}
+
+export async function fetchAiUsage(days = 30): Promise<AiUsageSummary> {
+  const { data } = await apiClient.get<{ success: boolean; usage: AiUsageSummary }>('/api/ai/usage', {
+    params: { days },
+  });
+  return data.usage;
 }
 
 export async function fetchDeals(params?: {

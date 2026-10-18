@@ -245,6 +245,20 @@ export interface ClaudeEvaluation {
   confidenceBuckets: ClaudeConfidenceBucket[];
 }
 
+export interface AiUsageSummary {
+  days: number;
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  estimatedCostUsd: number;
+  byPurpose: Array<{
+    purpose: string;
+    calls: number;
+    estimatedCostUsd: number;
+  }>;
+}
+
 export interface DashboardStats {
   totalDeals: number;
   winRate: number;
