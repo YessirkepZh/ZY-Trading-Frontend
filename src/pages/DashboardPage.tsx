@@ -115,6 +115,21 @@ function AiUsageBlock({ usage }: { usage: AiUsageSummary }) {
 
 function ClaudeEvaluationBlock({ evaluation }: { evaluation: ClaudeEvaluation }) {
   const accuracy = evaluation.accuracyPercent;
+  const ece = evaluation.expectedCalibrationError;
+  const curve = evaluation.calibrationCurve ?? evaluation.confidenceBuckets.map((b) => ({
+    label: b.label,
+    claimedConfidence: b.avgConfidence,
+    actualWinRate: b.winRate,
+    count: b.count,
+    delta: b.winRate - Math.round(b.avgConfidence),
+  }));
+  const chartData = curve.map((p) => ({
+    label: p.label,
+    claimed: p.claimedConfidence,
+    actual: p.actualWinRate,
+    perfect: p.claimedConfidence,
+  }));
+
   return (
     <div className="bg-surface border border-border rounded-lg overflow-hidden">
       <div className="px-4 py-3 border-b border-border flex flex-wrap items-baseline justify-between gap-2">
@@ -124,18 +139,32 @@ function ClaudeEvaluationBlock({ evaluation }: { evaluation: ClaudeEvaluation })
             Закрытые win/loss с проверкой сетапа · {evaluation.evaluatedDeals} сделок
           </p>
         </div>
-        {accuracy !== null && (
-          <div className="text-right">
-            <p className="text-xs text-muted uppercase tracking-wide">Точность take/skip</p>
-            <p
-              className="text-xl font-semibold"
-              style={{ color: accuracy >= 50 ? '#4caf50' : '#f44336' }}
-            >
-              {accuracy}%
-            </p>
-            <p className="text-[11px] text-muted/70">take→win, skip→loss</p>
-          </div>
-        )}
+        <div className="flex flex-wrap gap-4">
+          {accuracy !== null && (
+            <div className="text-right">
+              <p className="text-xs text-muted uppercase tracking-wide">Точность take/skip</p>
+              <p
+                className="text-xl font-semibold"
+                style={{ color: accuracy >= 50 ? '#4caf50' : '#f44336' }}
+              >
+                {accuracy}%
+              </p>
+              <p className="text-[11px] text-muted/70">take→win, skip→loss</p>
+            </div>
+          )}
+          {ece != null && (
+            <div className="text-right">
+              <p className="text-xs text-muted uppercase tracking-wide">ECE</p>
+              <p
+                className="text-xl font-semibold"
+                style={{ color: ece <= 10 ? '#4caf50' : ece <= 20 ? '#ff9800' : '#f44336' }}
+              >
+                {ece}
+              </p>
+              <p className="text-[11px] text-muted/70">ниже = лучше калибровка</p>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-0 md:divide-x divide-border">
@@ -189,7 +218,7 @@ function ClaudeEvaluationBlock({ evaluation }: { evaluation: ClaudeEvaluation })
           <div className="px-4 pt-3 pb-1">
             <p className="text-xs text-muted">Калибровка уверенности (только take)</p>
           </div>
-          {evaluation.confidenceBuckets.length === 0 ? (
+          {curve.length === 0 ? (
             <p className="px-4 py-6 text-xs text-muted">Нет take-рекомендаций</p>
           ) : (
             <table className="w-full text-sm">
@@ -202,27 +231,57 @@ function ClaudeEvaluationBlock({ evaluation }: { evaluation: ClaudeEvaluation })
                 </tr>
               </thead>
               <tbody>
-                {evaluation.confidenceBuckets.map((b) => {
-                  const delta = b.winRate - Math.round(b.avgConfidence);
-                  return (
-                    <tr key={b.label} className="border-b border-border/50 last:border-0">
-                      <td className="px-4 py-2.5 text-text">{b.label}%</td>
-                      <td className="px-4 py-2.5 text-right text-text">{b.count}</td>
-                      <td className="px-4 py-2.5 text-right text-text">{b.winRate}%</td>
-                      <td
-                        className="px-4 py-2.5 text-right font-medium"
-                        style={{ color: delta >= 0 ? '#4caf50' : '#f44336' }}
-                      >
-                        {delta > 0 ? '+' : ''}{delta}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {curve.map((b) => (
+                  <tr key={b.label} className="border-b border-border/50 last:border-0">
+                    <td className="px-4 py-2.5 text-text">{b.label}%</td>
+                    <td className="px-4 py-2.5 text-right text-text">{b.count}</td>
+                    <td className="px-4 py-2.5 text-right text-text">{b.actualWinRate}%</td>
+                    <td
+                      className="px-4 py-2.5 text-right font-medium"
+                      style={{ color: b.delta >= 0 ? '#4caf50' : '#f44336' }}
+                    >
+                      {b.delta > 0 ? '+' : ''}{b.delta}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}
         </div>
       </div>
+
+      {chartData.length > 0 && (
+        <div className="px-4 py-4 border-t border-border">
+          <p className="text-xs text-muted mb-3">
+            Кривая калибровки: заявленная уверенность vs фактический winrate (идеал — совпадение линий)
+          </p>
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart data={chartData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+              <XAxis dataKey="label" stroke="#888" tick={{ fontSize: 11 }} />
+              <YAxis stroke="#888" unit="%" domain={[0, 100]} tick={{ fontSize: 11 }} />
+              <Tooltip {...CHART_TOOLTIP} />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="claimed"
+                name="Заявлено"
+                stroke="#8884d8"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="actual"
+                name="Факт win%"
+                stroke="#4caf50"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }

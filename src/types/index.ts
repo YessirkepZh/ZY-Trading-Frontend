@@ -238,11 +238,21 @@ export interface ClaudeConfidenceBucket {
   avgConfidence: number;
 }
 
+export interface CalibrationPoint {
+  label: string;
+  claimedConfidence: number;
+  actualWinRate: number;
+  count: number;
+  delta: number;
+}
+
 export interface ClaudeEvaluation {
   evaluatedDeals: number;
   accuracyPercent: number | null;
   byRecommendation: ClaudeEvalByRec[];
   confidenceBuckets: ClaudeConfidenceBucket[];
+  calibrationCurve?: CalibrationPoint[];
+  expectedCalibrationError?: number | null;
 }
 
 export interface AiUsageSummary {
