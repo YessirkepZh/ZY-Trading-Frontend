@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDeals } from '../hooks/useDeals';
+import { fetchStrategies } from '../api/tradingSettings';
 import DealCard from '../components/DealCard';
 import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
-import type { DealStatus, Strategy, MarketType } from '../types';
+import type { DealStatus, MarketType } from '../types';
 import { STATUS_LABELS, MARKET_LABELS } from '../utils/constants';
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
@@ -11,14 +12,6 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   ...(['created', 'notified', 'entered', 'closed', 'missed'] as DealStatus[]).map((s) => ({
     value: s,
     label: STATUS_LABELS[s],
-  })),
-];
-
-const STRATEGY_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: 'Все' },
-  ...(['Пробой', 'Ложный Пробой', 'Отбой'] as Strategy[]).map((s) => ({
-    value: s,
-    label: s,
   })),
 ];
 
@@ -61,8 +54,25 @@ export default function DealsPage() {
   const [strategy, setStrategy] = useState('');
   const [marketType, setMarketType] = useState('');
   const [page, setPage] = useState(0);
+  const [strategyOptions, setStrategyOptions] = useState<Array<{ value: string; label: string }>>([
+    { value: '', label: 'Все' },
+  ]);
 
   const { deals, loading, error } = useDeals({ status, strategy, marketType, page, pageSize: PAGE_SIZE });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchStrategies()
+      .then((list) => {
+        if (cancelled) return;
+        setStrategyOptions([
+          { value: '', label: 'Все' },
+          ...list.map((s) => ({ value: s.name, label: s.name })),
+        ]);
+      })
+      .catch(() => { /* keep "Все" only */ });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleFilterChange = (setter: (v: string) => void) => (v: string) => {
     setter(v);
@@ -84,7 +94,7 @@ export default function DealsPage() {
         <FilterSelect
           label="Стратегия"
           value={strategy}
-          options={STRATEGY_OPTIONS}
+          options={strategyOptions}
           onChange={handleFilterChange(setStrategy)}
         />
         <FilterSelect

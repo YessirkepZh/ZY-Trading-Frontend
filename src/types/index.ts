@@ -1,7 +1,33 @@
 export type DealStatus = 'created' | 'notified' | 'entered' | 'closed' | 'missed';
 export type MarketType = 'crypto' | 'stocks' | 'forex';
 export type Direction = 'long' | 'short';
-export type Strategy = 'Пробой' | 'Ложный Пробой' | 'Отбой';
+/** Strategy name — system defaults + user-defined */
+export type Strategy = string;
+
+export interface RiskPreset {
+  id: number;
+  userId: number;
+  name: string;
+  riskPercent: number;
+  ratio: number;
+  luftPercent: number;
+  riskSum: number;
+  isSystem: boolean;
+  isDefault: boolean;
+  archivedAt: string | null;
+}
+
+export interface TradingStrategy {
+  id: number;
+  userId: number;
+  name: string;
+  slug: string;
+  position: number;
+  isSystem: boolean;
+  defaultRiskPresetId: number | null;
+  archivedAt: string | null;
+  defaultRiskPreset?: RiskPreset | null;
+}
 export type DealResult = 'win' | 'loss' | 'breakeven';
 
 export interface CalculationResult {
@@ -278,7 +304,7 @@ export interface DashboardStats {
   maxDrawdownR?: number;
   maxDrawdownUsd?: number;
   avgDealsPerDay?: number;
-  byStrategy: Record<Strategy, StrategyStats>;
+  byStrategy: Record<string, StrategyStats>;
   byMarket?: Record<MarketType, MarketStats>;
   weeklyPerformance?: WeeklyPerformance[];
   dealsPerDay?: DailyCount[];

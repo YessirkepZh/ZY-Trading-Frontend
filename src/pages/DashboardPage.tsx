@@ -596,9 +596,9 @@ export default function DashboardPage() {
                         <span
                           className="text-xs font-medium px-2 py-0.5 rounded"
                           style={{
-                            background: `${STRATEGY_COLORS[strategy]}22`,
-                            color: STRATEGY_COLORS[strategy],
-                            border: `1px solid ${STRATEGY_COLORS[strategy]}44`,
+                            background: `${STRATEGY_COLORS[strategy] ?? '#888'}22`,
+                            color: STRATEGY_COLORS[strategy] ?? '#888',
+                            border: `1px solid ${STRATEGY_COLORS[strategy] ?? '#888'}44`,
                           }}
                         >
                           {strategy}
