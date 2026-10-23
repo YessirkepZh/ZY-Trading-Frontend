@@ -569,6 +569,7 @@ export default function ChecklistsPage() {
       {editItem && (
         <Modal title="Редактировать пункт" onClose={() => setEditItem(null)}>
           <EditForm
+            key={editItem.id}
             item={editItem}
             error={formError}
             loading={formLoading}
